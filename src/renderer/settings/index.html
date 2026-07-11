@@ -218,12 +218,12 @@
       <!-- ---------- Rewrite ---------- -->
       <section class="page" id="tab-rewrite" role="tabpanel">
         <h1>Rewrite</h1>
-        <p class="hint page-hint">Optionally polish each dictation with a local AI model before it's inserted. Runs entirely on your machine through <strong>Ollama</strong>. No cloud, no account. Your selected model rewrites the transcript; if anything goes wrong, your original words are inserted unchanged.</p>
+        <p class="hint page-hint">Optionally polish each dictation with a local AI model before it's inserted. Runs entirely on your machine through <strong>Ollama</strong>, or any OpenAI-compatible server (LM Studio, vLLM, …). No cloud, no account. If anything goes wrong, your original words are inserted unchanged.</p>
 
         <div class="card">
           <div class="card-head"><h2>AI rewrite</h2></div>
           <div class="row toggle-row">
-            <div><div class="row-label">Rewrite before inserting</div><div class="row-sub">Send the transcript to a local Ollama model and insert its cleaned-up version.</div></div>
+            <div><div class="row-label">Rewrite before inserting</div><div class="row-sub">Send the transcript to a local model and insert its cleaned-up version.</div></div>
             <label class="switch"><input type="checkbox" id="rewrite-enabled"><span class="track"></span></label>
           </div>
           <div class="row">
@@ -239,8 +239,19 @@
 
         <div class="card">
           <div class="card-head">
-            <h2>Ollama model</h2>
-            <p class="hint">The local model that does the rewriting. Bigger models read better but are slower.</p>
+            <h2>Local model server</h2>
+            <p class="hint">Point this at any model server running on your machine. Local-only: Say Something refuses any address that isn't localhost, so your transcripts never leave your computer.</p>
+          </div>
+          <div class="row">
+            <label class="row-label" for="rewrite-api">Server type</label>
+            <select id="rewrite-api" class="select">
+              <option value="ollama">Ollama</option>
+              <option value="openai">OpenAI-compatible (LM Studio, vLLM, …)</option>
+            </select>
+          </div>
+          <div class="row">
+            <label class="row-label" for="rewrite-endpoint">Endpoint</label>
+            <input id="rewrite-endpoint" class="text-input" type="text" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:11434" />
           </div>
           <div class="row">
             <label class="row-label" for="rewrite-model">Model</label>
@@ -250,7 +261,7 @@
             </div>
           </div>
           <div class="row">
-            <div class="row-sub" id="rewrite-status">Checking for Ollama…</div>
+            <div class="row-sub" id="rewrite-status">Checking…</div>
           </div>
         </div>
 

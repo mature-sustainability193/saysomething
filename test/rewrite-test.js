@@ -156,6 +156,35 @@ eq(rewrite._internals.clampTimeout(999999), rewrite.HARD_TIMEOUT_MS, 'clamp: ove
 eq(rewrite._internals.clampTimeout(-5), 10000, 'clamp: non-positive -> default');
 eq(rewrite._internals.clampTimeout(5000), 5000, 'clamp: in-range preserved');
 
+// ---- endpoint gate + OpenAI adapter (issue #2) ------------------------------
+var NE = rewrite._internals.normalizeEndpoint;
+var LB = rewrite._internals.isLoopbackHost;
+var OA = rewrite._internals.extractOpenAIContent;
+
+eq(LB('127.0.0.1'), true, 'loopback: 127.0.0.1');
+eq(LB('localhost'), true, 'loopback: localhost');
+eq(LB('::1'), true, 'loopback: ::1');
+eq(LB('127.5.9.1'), true, 'loopback: 127.0.0.0/8 range');
+eq(LB('192.168.1.10'), false, 'loopback: LAN address is NOT loopback');
+eq(LB('example.com'), false, 'loopback: remote host is NOT loopback');
+eq(LB('0.0.0.0'), false, 'loopback: 0.0.0.0 is NOT loopback');
+
+eq(NE('http://127.0.0.1:11434'), 'http://127.0.0.1:11434', 'endpoint: local origin passes through');
+eq(NE('http://localhost:1234/v1'), 'http://localhost:1234', 'endpoint: path stripped to origin');
+eq(NE('http://127.0.0.1:8000/'), 'http://127.0.0.1:8000', 'endpoint: trailing slash dropped');
+eq(NE('https://[::1]:1234'), 'https://[::1]:1234', 'endpoint: ipv6 loopback ok');
+eq(NE('http://192.168.0.5:1234'), null, 'endpoint: LAN address REFUSED');
+eq(NE('http://evil.example.com/v1'), null, 'endpoint: remote host REFUSED');
+eq(NE('ftp://127.0.0.1'), null, 'endpoint: non-http scheme REFUSED');
+eq(NE('not a url'), null, 'endpoint: garbage REFUSED');
+eq(NE(''), null, 'endpoint: empty REFUSED');
+
+eq(OA({ choices: [{ message: { content: 'Hi there.' } }] }), 'Hi there.', 'openai: choices[0].message.content');
+eq(OA({ choices: [{ text: 'Completion text.' }] }), 'Completion text.', 'openai: falls back to choices[0].text');
+eq(OA({ choices: [] }), '', 'openai: empty choices -> empty');
+eq(OA({}), '', 'openai: no choices -> empty');
+eq(OA(null), '', 'openai: null body -> empty');
+
 // ---- summary -----------------------------------------------------------------
 console.log('rewrite-test: ' + passed + ' passed, ' + failed + ' failed');
 if (failed > 0) process.exit(1);

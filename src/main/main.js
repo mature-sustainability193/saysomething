@@ -666,14 +666,20 @@ function wireIpc() {
     });
   });
 
-  // Live model picker for the Rewrite settings tab. Queries the LOCAL Ollama
-  // daemon (127.0.0.1 only); never throws — an unreachable daemon returns
-  // { reachable:false } so the UI can show its "not detected" state.
-  ipcMain.handle(ipc.REWRITE_MODELS, function () {
+  // Live model picker for the Rewrite settings tab. Queries the configured LOCAL
+  // model server (loopback-only, enforced in rewrite.js); never throws — an
+  // unreachable server returns { reachable:false } so the UI shows "not detected".
+  // Accepts an optional { endpoint, api } so the UI can probe unsaved values;
+  // falls back to the saved settings.
+  ipcMain.handle(ipc.REWRITE_MODELS, function (_evt, opts) {
     if (!rewriter || !rewriter.listModels) {
       return { reachable: false, models: [], host: '' };
     }
-    return rewriter.listModels().then(function (r) {
+    let rw = {};
+    try { rw = settingsStore.get().rewrite || {}; } catch (e) { /* ignore */ }
+    const endpoint = (opts && typeof opts.endpoint === 'string' && opts.endpoint) ? opts.endpoint : rw.endpoint;
+    const api = (opts && opts.api) ? opts.api : rw.api;
+    return rewriter.listModels({ endpoint: endpoint, api: api }).then(function (r) {
       return r || { reachable: false, models: [], host: '' };
     }, function (e) {
       logWarn('rewrite:models query failed', e);

@@ -57,7 +57,10 @@ const DEFAULTS = {
   // Optional local AI rewrite via Ollama (v0.2). Master toggle default OFF; when
   // on and Ollama is reachable, the formatted text is rewritten before injection.
   // localhost-only; see src/main/whisper/rewrite.js.
-  rewrite: { enabled: false, style: 'cleanup', model: '', timeoutMs: 10000 },
+  // endpoint/api (issue #2): point at any LOCAL model server (Ollama, or an
+  // OpenAI-compatible one like LM Studio/vLLM). Loopback-gated in fixup() AND in
+  // rewrite.js, so transcripts never leave the machine.
+  rewrite: { enabled: false, style: 'cleanup', model: '', timeoutMs: 10000, endpoint: 'http://127.0.0.1:11434', api: 'ollama' },
   inject: { mode: 'paste', restoreClipboardMs: 300 },
   // Live partial transcripts (v0.3): show words in the pill as you speak. The
   // interim passes run on the already-warm whisper server and are display-only —
@@ -78,6 +81,7 @@ const DEFAULTS = {
 
 const INJECT_MODES = ['paste', 'type'];
 const REWRITE_STYLES = ['cleanup', 'professional', 'casual', 'bullets'];
+const REWRITE_APIS = ['ollama', 'openai'];
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -137,6 +141,23 @@ function clampInt(v, min, max, fallback) {
 }
 
 /**
+ * Coerce a rewrite endpoint to a loopback origin (issue #2), or the fallback when
+ * it isn't a local http(s) URL. Mirrors rewrite.js's normalizeEndpoint so a bad or
+ * hand-edited value can never point the pipeline at a remote host.
+ */
+function coerceLoopbackUrl(v, fallback) {
+  if (typeof v !== 'string' || !v.trim()) return fallback;
+  let u;
+  try { u = new URL(v.trim()); } catch (e) { return fallback; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return fallback;
+  let h = u.hostname.toLowerCase();
+  if (h.charAt(0) === '[' && h.charAt(h.length - 1) === ']') h = h.slice(1, -1);
+  const loopback = (h === 'localhost' || h === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h));
+  if (!loopback) return fallback;
+  return u.protocol + '//' + u.host;
+}
+
+/**
  * Apply value-range / enum constraints on top of the structural coercion.
  * Mutates and returns `s`.
  */
@@ -147,6 +168,9 @@ function fixup(s) {
   // value can never make a rewrite hang dictation longer than 10s.
   s.rewrite.timeoutMs = clampInt(s.rewrite.timeoutMs, 1000, 10000, DEFAULTS.rewrite.timeoutMs);
   if (typeof s.rewrite.model !== 'string') s.rewrite.model = DEFAULTS.rewrite.model;
+  if (REWRITE_APIS.indexOf(s.rewrite.api) === -1) s.rewrite.api = DEFAULTS.rewrite.api;
+  // Loopback-only endpoint: a remote/invalid URL falls back to the local default.
+  s.rewrite.endpoint = coerceLoopbackUrl(s.rewrite.endpoint, DEFAULTS.rewrite.endpoint);
   s.inject.restoreClipboardMs = clampInt(s.inject.restoreClipboardMs, 0, 60000, DEFAULTS.inject.restoreClipboardMs);
   s.mic.preRollMs = clampInt(s.mic.preRollMs, 0, 5000, DEFAULTS.mic.preRollMs);
   s.autoStop.silenceMs = clampInt(s.autoStop.silenceMs, 1000, 5000, DEFAULTS.autoStop.silenceMs);

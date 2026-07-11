@@ -9,8 +9,10 @@
  * sanitised rewrite is injected instead of the original.
  *
  * HARD RULES (docs/SPEC.md resilience + privacy):
- *  - Ollama is LOCALHOST ONLY. The host is a hard-coded constant; there is no
- *    setting, env var or code path that can point this at any other machine.
+ *  - LOOPBACK ONLY. The endpoint is configurable (issue #2: a local Ollama, or an
+ *    OpenAI-compatible server like LM Studio / vLLM on any port), but
+ *    normalizeEndpoint() REFUSES any non-loopback host, so a transcript can never
+ *    leave the machine no matter what a setting or hand-edited file says.
  *  - Rewrite must NEVER lose a dictation. `rewrite()` never rejects and never
  *    throws: on timeout / connection-refused / non-200 / empty / garbage /
  *    wildly-oversized output it resolves to `{ text: null, reason }` and the
@@ -23,7 +25,8 @@
  * this module itself only returns structured results and lets the caller log.
  */
 
-// Localhost only. Never a setting, never anything else. See privacy rules.
+// Default endpoint: the local Ollama daemon. Now user-configurable (issue #2) but
+// always loopback-gated by normalizeEndpoint() below. See privacy rules.
 var OLLAMA_HOST = 'http://127.0.0.1:11434';
 
 // Hard cap on the request budget regardless of what the settings pass in.
@@ -276,7 +279,65 @@ function sanitize(raw, original) {
 }
 
 // ---------------------------------------------------------------------------
-// Ollama HTTP (localhost only)
+// Endpoint gate (loopback-only) + API adapters (issue #2)
+// ---------------------------------------------------------------------------
+
+// True only for a loopback host: localhost, ::1, or the 127.0.0.0/8 range.
+function isLoopbackHost(hostname) {
+  if (typeof hostname !== 'string') return false;
+  var h = hostname.toLowerCase();
+  if (h.charAt(0) === '[' && h.charAt(h.length - 1) === ']') h = h.slice(1, -1); // [::1]
+  if (h === 'localhost' || h === '::1') return true;
+  return /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h);
+}
+
+// Validate + normalize a rewrite endpoint to a loopback origin (scheme://host:port),
+// or null when it is not a local http(s) URL. THE privacy gate: a non-loopback URL
+// is refused here, so a transcript can never leave the machine. PURE, unit-tested.
+function normalizeEndpoint(url) {
+  if (typeof url !== 'string' || !url.trim()) return null;
+  var u;
+  try { u = new URL(url.trim()); } catch (e) { return null; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+  if (!isLoopbackHost(u.hostname)) return null;
+  return u.protocol + '//' + u.host;
+}
+
+// OpenAI /v1/chat/completions -> { choices: [ { message: { content } } ] }.
+function extractOpenAIContent(body) {
+  if (!body || typeof body !== 'object') return '';
+  var choices = body.choices;
+  if (Array.isArray(choices) && choices.length) {
+    var c0 = choices[0];
+    if (c0 && c0.message && typeof c0.message.content === 'string') return c0.message.content;
+    if (c0 && typeof c0.text === 'string') return c0.text;
+  }
+  return '';
+}
+
+function ollamaModelNames(body) {
+  var list = (body && Array.isArray(body.models)) ? body.models : [];
+  var names = [];
+  for (var i = 0; i < list.length; i++) {
+    var nm = list[i] && list[i].name;
+    if (typeof nm === 'string' && nm && names.indexOf(nm) === -1) names.push(nm);
+  }
+  return names;
+}
+
+// OpenAI /v1/models -> { data: [ { id } ] }.
+function openaiModelNames(body) {
+  var list = (body && Array.isArray(body.data)) ? body.data : [];
+  var names = [];
+  for (var i = 0; i < list.length; i++) {
+    var id = list[i] && list[i].id;
+    if (typeof id === 'string' && id && names.indexOf(id) === -1) names.push(id);
+  }
+  return names;
+}
+
+// ---------------------------------------------------------------------------
+// HTTP (loopback only, enforced by normalizeEndpoint)
 // ---------------------------------------------------------------------------
 
 function clampTimeout(ms) {
@@ -287,33 +348,32 @@ function clampTimeout(ms) {
 }
 
 /**
- * List models installed in the local Ollama daemon (GET /api/tags).
- * Never throws. Used to populate the settings model picker.
- * @param {number} [timeoutMs]
+ * List models available at the configured LOCAL endpoint. Never throws. Used to
+ * populate the settings model picker. A non-loopback endpoint is refused.
+ * @param {{endpoint?:string, api?:string, timeoutMs?:number}} [opts]
  * @returns {Promise<{reachable: boolean, models: string[], host: string, error?: string}>}
  */
-async function listModels(timeoutMs) {
-  var to = clampTimeout(timeoutMs || 4000);
+async function listModels(opts) {
+  opts = opts || {};
+  var to = clampTimeout(opts.timeoutMs || 4000);
+  var base = normalizeEndpoint(opts.endpoint || OLLAMA_HOST);
+  if (!base) {
+    return { reachable: false, models: [], host: String(opts.endpoint || ''), error: 'non-local endpoint blocked' };
+  }
+  var api = (opts.api === 'openai') ? 'openai' : 'ollama';
+  var url = base + (api === 'openai' ? '/v1/models' : '/api/tags');
   try {
-    var res = await fetch(OLLAMA_HOST + '/api/tags', {
-      method: 'GET',
-      signal: AbortSignal.timeout(to),
-    });
+    var res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(to) });
     if (!res.ok) {
-      return { reachable: false, models: [], host: OLLAMA_HOST, error: 'HTTP ' + res.status };
+      return { reachable: false, models: [], host: base, error: 'HTTP ' + res.status };
     }
     var body = await res.json();
-    var list = (body && Array.isArray(body.models)) ? body.models : [];
-    var names = [];
-    for (var i = 0; i < list.length; i++) {
-      var nm = list[i] && list[i].name;
-      if (typeof nm === 'string' && nm && names.indexOf(nm) === -1) names.push(nm);
-    }
+    var names = (api === 'openai') ? openaiModelNames(body) : ollamaModelNames(body);
     names.sort();
-    return { reachable: true, models: names, host: OLLAMA_HOST };
+    return { reachable: true, models: names, host: base };
   } catch (e) {
-    // ECONNREFUSED / timeout / DNS / anything: Ollama is simply not available.
-    return { reachable: false, models: [], host: OLLAMA_HOST, error: reason(e) };
+    // ECONNREFUSED / timeout / DNS / anything: the server is simply not available.
+    return { reachable: false, models: [], host: base, error: reason(e) };
   }
 }
 
@@ -328,7 +388,7 @@ function reason(e) {
  * Rewrite `text` with the local Ollama daemon. NEVER rejects, NEVER throws.
  *
  * @param {string} text  the formatted transcript to rewrite
- * @param {{model:string, style?:string, timeoutMs?:number}} opts
+ * @param {{model:string, style?:string, timeoutMs?:number, endpoint?:string, api?:string}} opts
  * @returns {Promise<{text:(string|null), reason:string}>}
  *   On success: `{ text: '<rewrite>', reason: 'ok' }`.
  *   On any failure or discardable output: `{ text: null, reason: '<why>' }`
@@ -339,23 +399,30 @@ async function rewrite(text, opts) {
   if (typeof text !== 'string' || !text.trim()) return { text: null, reason: 'empty-input' };
   if (!opts.model) return { text: null, reason: 'no-model' };
 
+  var base = normalizeEndpoint(opts.endpoint || OLLAMA_HOST);
+  if (!base) return { text: null, reason: 'non-local-endpoint' };
+  var api = (opts.api === 'openai') ? 'openai' : 'ollama';
+
   var style = styleFor(opts.style);
   var to = clampTimeout(opts.timeoutMs);
+  var messages = [
+    { role: 'system', content: style.instruction + ' ' + COMMON_RULES },
+    { role: 'user', content: text },
+  ];
 
-  var payload = {
-    model: String(opts.model),
-    stream: false,
-    // Low temperature: we want faithful cleanup, not creative writing.
-    options: { temperature: 0.2 },
-    messages: [
-      { role: 'system', content: style.instruction + ' ' + COMMON_RULES },
-      { role: 'user', content: text },
-    ],
-  };
+  // Low temperature: faithful cleanup, not creative writing.
+  var url, payload;
+  if (api === 'openai') {
+    url = base + '/v1/chat/completions';
+    payload = { model: String(opts.model), stream: false, temperature: 0.2, messages: messages };
+  } else {
+    url = base + '/api/chat';
+    payload = { model: String(opts.model), stream: false, options: { temperature: 0.2 }, messages: messages };
+  }
 
   var res;
   try {
-    res = await fetch(OLLAMA_HOST + '/api/chat', {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -376,7 +443,7 @@ async function rewrite(text, opts) {
     return { text: null, reason: 'bad-json' };
   }
 
-  var raw = extractContent(body);
+  var raw = (api === 'openai') ? extractOpenAIContent(body) : extractContent(body);
   return sanitize(raw, text);
 }
 
@@ -402,6 +469,7 @@ module.exports = {
   styleKeys: styleKeys,
   DEFAULT_STYLE: DEFAULT_STYLE,
   HOST: OLLAMA_HOST,
+  DEFAULT_ENDPOINT: OLLAMA_HOST,
   HARD_TIMEOUT_MS: HARD_TIMEOUT_MS,
   // Exposed for focused testing; not part of the integration contract.
   _internals: {
@@ -411,6 +479,9 @@ module.exports = {
     stripWrappingQuotes: stripWrappingQuotes,
     stripTrailingExplanation: stripTrailingExplanation,
     extractContent: extractContent,
+    extractOpenAIContent: extractOpenAIContent,
+    isLoopbackHost: isLoopbackHost,
+    normalizeEndpoint: normalizeEndpoint,
     clampTimeout: clampTimeout,
   },
 };

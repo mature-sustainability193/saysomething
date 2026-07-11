@@ -638,16 +638,33 @@
   // Rewrite (local AI via Ollama)
   // -------------------------------------------------------------------------
 
-  var ollamaModels = [];       // last-known list of installed model names
-  var ollamaReachable = false; // last-known daemon reachability
+  var ollamaModels = [];       // last-known list of the configured server's models
+  var ollamaReachable = false; // last-known server reachability
+
+  // Loopback-only validation for the endpoint field (mirrors the main-process
+  // gate). Returns a normalized origin, or null when the URL isn't local.
+  function normalizeLocalUrl(v) {
+    if (typeof v !== 'string' || !v.trim()) return null;
+    var u;
+    try { u = new URL(v.trim()); } catch (e) { return null; }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    var h = u.hostname.toLowerCase();
+    if (h.charAt(0) === '[' && h.charAt(h.length - 1) === ']') h = h.slice(1, -1);
+    var loopback = (h === 'localhost' || h === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h));
+    if (!loopback) return null;
+    return u.protocol + '//' + u.host;
+  }
 
   function renderRewrite() {
     if (!settings) return;
     var rw = settings.rewrite || {};
     setChecked('rewrite-enabled', rw.enabled);
     setSelectValue('rewrite-style', rw.style || 'cleanup');
-    // The model <select> is populated live from Ollama; if we already have the
-    // list, make sure the saved model is shown/selected.
+    setSelectValue('rewrite-api', rw.api || 'ollama');
+    var ep = $('rewrite-endpoint');
+    if (ep && !focused(ep)) ep.value = rw.endpoint || 'http://127.0.0.1:11434';
+    // The model <select> is populated live from the configured server; if we
+    // already have the list, make sure the saved model is shown/selected.
     populateOllamaSelect();
   }
 
@@ -656,6 +673,25 @@
 
     var style = $('rewrite-style');
     if (style) style.addEventListener('change', function () { persist({ rewrite: { style: this.value } }); });
+
+    var apiSel = $('rewrite-api');
+    if (apiSel) apiSel.addEventListener('change', function () {
+      persist({ rewrite: { api: this.value } });
+      loadOllamaModels(true);
+    });
+
+    var ep = $('rewrite-endpoint');
+    if (ep) ep.addEventListener('change', function () {
+      var norm = normalizeLocalUrl(this.value);
+      if (!norm) {
+        toast('Only a local address is allowed (localhost / 127.0.0.1)');
+        this.value = (settings && settings.rewrite && settings.rewrite.endpoint) || 'http://127.0.0.1:11434';
+        return;
+      }
+      this.value = norm;
+      persist({ rewrite: { endpoint: norm } });
+      loadOllamaModels(true);
+    });
 
     var model = $('rewrite-model');
     if (model) model.addEventListener('change', function () {
@@ -675,16 +711,24 @@
   }
 
   function loadOllamaModels(userInitiated) {
-    setRewriteStatus('Checking for Ollama…', null);
-    api.invoke('rewrite:models').then(function (res) {
+    var serverApi = ($('rewrite-api') && $('rewrite-api').value) ||
+      (settings && settings.rewrite && settings.rewrite.api) || 'ollama';
+    var endpoint = ($('rewrite-endpoint') && $('rewrite-endpoint').value) ||
+      (settings && settings.rewrite && settings.rewrite.endpoint) || '';
+    setRewriteStatus('Checking ' + (serverApi === 'openai' ? 'the server' : 'Ollama') + '…', null);
+    api.invoke('rewrite:models', { endpoint: endpoint, api: serverApi }).then(function (res) {
       res = res || {};
       ollamaReachable = !!res.reachable;
       ollamaModels = Array.isArray(res.models) ? res.models : [];
       populateOllamaSelect();
       if (!ollamaReachable) {
-        setRewriteStatus('Ollama not detected — install from ollama.com, it’s free and local.', 'rewrite-warn');
+        if (serverApi === 'openai') {
+          setRewriteStatus('No server reachable there. Start your local model server, then hit Refresh.', 'rewrite-warn');
+        } else {
+          setRewriteStatus('Ollama not detected — install from ollama.com, it’s free and local.', 'rewrite-warn');
+        }
       } else if (!ollamaModels.length) {
-        setRewriteStatus('Ollama is running but has no models. Pull one, e.g.  ollama pull llama3.2', 'rewrite-warn');
+        setRewriteStatus('Server is running but has no models loaded.', 'rewrite-warn');
       } else {
         setRewriteStatus(ollamaModels.length + ' model' + (ollamaModels.length === 1 ? '' : 's') + ' available on this machine.', 'rewrite-ok');
       }
@@ -692,7 +736,7 @@
       ollamaReachable = false;
       ollamaModels = [];
       populateOllamaSelect();
-      setRewriteStatus('Ollama not detected — install from ollama.com, it’s free and local.', 'rewrite-warn');
+      setRewriteStatus('Could not reach the model server. Check the address and try Refresh.', 'rewrite-warn');
     });
   }
 

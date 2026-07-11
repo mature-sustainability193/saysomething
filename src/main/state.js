@@ -416,6 +416,8 @@ function maybeRewrite(session, st, text) {
     model: rw.model,
     style: rw.style,
     timeoutMs: rw.timeoutMs,
+    endpoint: rw.endpoint,
+    api: rw.api,
   }).then(function (res) {
     if (res && typeof res.text === 'string' && res.text) {
       // Re-apply the trailing-space rule so injection spacing matches the
