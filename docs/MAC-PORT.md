@@ -155,24 +155,36 @@ cmake --build build -j --config Release
 
 ---
 
-## 8. Signing and distribution, the honest version
+## 8. Signing and notarization
 
-### The paid path ($99/yr Apple Developer)
-Developer ID Application cert + `hardenedRuntime: true` + `notarize: true`. electron-builder does **sign → notarize (notarytool) → staple** automatically given `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` (or an API key). Result: **Gatekeeper is silent, and TCC grants persist across updates** because the app has a stable Developer ID identity. This is the only way to get both.
+The owner has a paid Apple Developer account (used to ship an iOS app), so use the proper notarized path. It gives a **silent Gatekeeper install** and **TCC grants (Accessibility / Input Monitoring / Mic) that persist across updates**, because the app has a stable Developer ID identity.
 
-### The free path (no paid account), and exactly what breaks
-Since the current Windows build ships unsigned, the mac equivalent is:
-- **Ad-hoc sign, do NOT ship fully unsigned.** On Apple Silicon, unsigned code won't even launch (the loader kills it). Set `"identity": "-"` and `"hardenedRuntime": false` (or keep hardened + add `com.apple.security.cs.disable-library-validation`), else the ad-hoc app can fail to start.
-- **Gatekeeper will scare users.** A downloaded (quarantined) ad-hoc app shows "cannot be opened because the developer cannot be verified" or the harsher "is damaged." On macOS 15 Sequoia the right-click→Open bypass is mostly gone; users go to **System Settings › Privacy & Security › Open Anyway** after the first blocked launch.
-- **Document the one command** (in the README *and* an in-app first-run screen):
-  ```
-  xattr -dr com.apple.quarantine /Applications/Say\ Something.app
-  ```
-  (Locally-built / build-from-source apps aren't quarantined, so "build it yourself" and a Homebrew cask that runs the `xattr` step are the friendlier free channels.)
-- **Can an ad-hoc app get Accessibility + Input Monitoring + Mic? YES.** macOS does not hard-block TCC grants for ad-hoc apps. **But the ad-hoc identity is not stable:** every rebuild has a different cdhash, so TCC thinks it's a new program and **the user must re-grant all three permissions after every update** (and stale entries pile up in the privacy list). That re-grant tax is the core cost of shipping free.
-- **Soften it:** sign with a **consistent self-signed certificate** instead of raw `-` ad-hoc, so grants survive some rebuilds (still won't remove the Gatekeeper prompt); and ship an in-app permissions screen that deep-links to the three panes and re-checks grant status so re-granting is one click each.
+This app ships as a **direct-download `.dmg`, not a Mac App Store app** (the global event taps + input injection are not allowed in the MAS sandbox). So you need a **Developer ID Application** certificate. Note: that is a *different* cert from the "Apple Distribution" cert used for the iOS App Store, but it is created under the same membership.
 
-**Bottom line:** for a truly free app, ad-hoc sign + documented quarantine removal + an in-app permissions/re-grant flow is the least-bad path. Silent Gatekeeper AND persistent TCC grants require the $99/yr Developer ID + notarization.
+### One-time setup
+1. In the Apple Developer portal (Certificates, Identifiers & Profiles) create a **Developer ID Application** certificate and install it in the build Mac's login keychain. Verify with `security find-identity -v -p codesigning`, which should list `Developer ID Application: <name> (<TEAMID>)`.
+2. Create an app-specific password for the Apple ID at appleid.apple.com (or an App Store Connect API key, better for CI).
+
+### package.json `mac`
+Keep `hardenedRuntime: true` and add `"notarize": true` (plus the `entitlements` / `entitlementsInherit` from §6). electron-builder auto-detects the Developer ID cert in the keychain.
+
+### Notarization credentials (env vars at build time)
+```
+export APPLE_ID="you@example.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export APPLE_TEAM_ID="ABCDE12345"
+```
+(or the API-key method: `APPLE_API_KEY` + `APPLE_API_KEY_ID` + `APPLE_API_ISSUER`.)
+
+### Build + verify
+```
+npm run dist    # electron-builder: sign -> notarize (notarytool) -> staple  =>  a notarized .dmg + .zip
+spctl --assess --verbose --type exec "dist/mac/Say Something.app"
+xcrun stapler validate "dist/mac/Say Something.app"
+```
+That is the whole signing story for this account: install the cert, set three env vars, run the build, ship the notarized `.dmg`. Same shape as the Windows release, just a `.dmg`.
+
+> Entitlements reminder (§6): the plist has `com.apple.security.cs.allow-jit` + `com.apple.security.device.audio-input`. There is **no** entitlement for Accessibility / Input Monitoring, those stay pure TCC user grants, handled by the onboarding screen in §4.
 
 ---
 
