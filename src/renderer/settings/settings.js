@@ -310,6 +310,37 @@
     if (out) out.textContent = (ms / 1000).toFixed(1) + ' s';
   }
 
+  // Combo hotkeys (issue #1): the capture result carries the trigger vk/name plus
+  // any held modifier VKs. Normalize L/R modifiers to a generic one (so "Alt + T"
+  // fires on either Alt) and build a display label. Returns { vk, name, mods }.
+  var MOD_NORMALIZE = { 16: 16, 160: 16, 161: 16, 17: 17, 162: 17, 163: 17, 18: 18, 164: 18, 165: 18, 91: 91, 92: 91 };
+  var MOD_LABEL = { 16: 'Shift', 17: 'Ctrl', 18: 'Alt', 91: 'Win' };
+  var MOD_ORDER = [17, 18, 16, 91]; // Ctrl, Alt, Shift, Win
+
+  function composeHotkey(res) {
+    var vk = res.vk;
+    var triggerName = res.name || ('VK ' + vk);
+    var mods = [];
+    var seen = {};
+    var raw = (res && res.mods) || [];
+    for (var i = 0; i < raw.length; i++) {
+      var g = MOD_NORMALIZE[raw[i]];
+      if (g == null) g = raw[i];
+      if (g === vk || seen[g]) continue;
+      seen[g] = true;
+      mods.push(g);
+    }
+    mods.sort(function (a, b) {
+      var ia = MOD_ORDER.indexOf(a); if (ia < 0) ia = 99;
+      var ib = MOD_ORDER.indexOf(b); if (ib < 0) ib = 99;
+      return ia - ib;
+    });
+    var parts = [];
+    for (var j = 0; j < mods.length; j++) parts.push(MOD_LABEL[mods[j]] || ('VK ' + mods[j]));
+    parts.push(triggerName);
+    return { vk: vk, name: parts.join(' + '), mods: mods };
+  }
+
   // Shared press-to-capture flow for a hotkey button. `apply(res)` persists it.
   function wireCapture(btnId, statusId, prompt, apply) {
     var btn = $(btnId);
@@ -337,11 +368,12 @@
     bindToggle('autostop-enabled', function (v) { persist({ autoStop: { enabled: v } }); });
     bindToggle('pad-enabled', function (v) { persist({ pad: { enabled: v } }); });
 
-    wireCapture('padhotkey-capture', 'padhotkey-status', 'Press any key for the drop pad…', function (res) {
-      persist({ padHotkey: { vk: res.vk, name: res.name || ('VK ' + res.vk) } });
+    wireCapture('padhotkey-capture', 'padhotkey-status', 'Press a key or combo for the drop pad…', function (res) {
+      var hk = composeHotkey(res);
+      persist({ padHotkey: hk });
       var nm = $('padhotkey-name');
-      if (nm) nm.textContent = res.name || ('VK ' + res.vk);
-      toast('Drop pad key set to ' + (res.name || ('VK ' + res.vk)));
+      if (nm) nm.textContent = hk.name;
+      toast('Drop pad key set to ' + hk.name);
     });
     var sil = $('autostop-silence');
     if (sil) {
@@ -359,13 +391,14 @@
       var status = $('hotkey-status');
       btn.disabled = true;
       if (card) card.classList.add('capturing');
-      if (status) status.textContent = 'Press any key to bind…';
+      if (status) status.textContent = 'Press a key or combo, e.g. Alt+T…';
       api.invoke('hotkey:capture').then(function (res) {
         if (res && typeof res.vk === 'number') {
-          persist({ hotkey: { vk: res.vk, name: res.name || ('VK ' + res.vk) } });
+          var hk = composeHotkey(res);
+          persist({ hotkey: hk });
           var nm = $('hotkey-name');
-          if (nm) nm.textContent = res.name || ('VK ' + res.vk);
-          toast('Hotkey set to ' + (res.name || ('VK ' + res.vk)));
+          if (nm) nm.textContent = hk.name;
+          toast('Hotkey set to ' + hk.name);
         } else {
           toast('No key captured');
         }

@@ -43,8 +43,8 @@ module.exports = {
 
 ```json
 {
-  "hotkey": { "vk": 163, "name": "Right Ctrl" },
-  "padHotkey": { "vk": 165, "name": "Right Alt" },
+  "hotkey": { "vk": 163, "name": "Right Ctrl", "mods": [] },
+  "padHotkey": { "vk": 165, "name": "Right Alt", "mods": [] },
   "pad": { "enabled": true },
   "mic": { "deviceId": "default", "warm": true, "preRollMs": 800 },
   "model": "small.en",
@@ -70,7 +70,7 @@ module.exports = {
 
 Electron → helper (`{"cmd": ...}` one per line):
 - `{"cmd":"watch","vks":[163]}` — replace the FULL watched set (state machine adds 27 only while recording)
-- `{"cmd":"capture"}` — one-shot: report next keydown (any VK) as `captured`, then revert to watch set
+- `{"cmd":"capture"}` — chord capture: accumulate held modifiers, resolve on the trigger key (or a lone modifier's release) as `captured`, then revert to watch set. `mods` (settings): generic modifier VKs (Ctrl 17, Alt 18, Shift 16, Win 91) that must be held with `vk`; empty = a bare key/modifier
 - `{"cmd":"paste","text":"...","restoreMs":300}` — clipboard-swap + Ctrl+V
 - `{"cmd":"type","text":"..."}` — SendInput KEYEVENTF_UNICODE
 - `{"cmd":"clipboard","text":"..."}` — set the clipboard WITHOUT pasting (drop-pad auto-copy)
@@ -81,7 +81,7 @@ Electron → helper (`{"cmd": ...}` one per line):
 Helper → Electron (`{"evt": ...}`):
 - `{"evt":"ready"}` (once, after hook installed) · `{"evt":"pong"}`
 - `{"evt":"key","vk":163,"down":true}` — watched VKs only, never injected input
-- `{"evt":"captured","vk":112,"name":"F1"}`
+- `{"evt":"captured","vk":84,"name":"T","mods":[164]}` — trigger vk + name plus the physical modifier VKs held (empty for a bare key)
 - `{"evt":"pasted","ok":true}` / `{"evt":"typed","ok":true}` / `{"evt":"copied","ok":true}` / `{"evt":"placed","ok":true}` (`"ok":false,"err":"..."` on failure)
 - `{"evt":"picked","x":N,"y":N}` — one-shot mouse pick result (armed by `pickPoint`)
 - `{"evt":"foreground","exe":"notepad.exe","title":"..."}`
@@ -117,7 +117,7 @@ Preload bridge shape (both preloads): `window.saysomething = { send(ch,p), on(ch
 ## Windows/tray/overlay creation (E: windows.js, tray.js)
 
 `windows.js`: `createOverlay()` — frameless, transparent, alwaysOnTop('screen-saver'), `focusable:false`, `skipTaskbar`, click-through (`setIgnoreMouseEvents(true)`), sized ~320×72, positioned bottom-center of primary display minus `overlay.offsetY`, hidden by `showInactive()`/`hide()` from state (`overlay:state` hidden ⇒ hide window; anything else ⇒ showInactive). The overlay window ALWAYS exists (hosts mic/worklet even when hidden — `show:false` at create). `createSettings()` — normal window 900×640, dark bg, opened from tray; single instance. `getOverlayWC()`/`getSettingsWC()` accessors.
-`tray.js`: programmatic RGBA `nativeImage` (16/32px cyan-violet wisp dot; use `scripts/gen-icon.js` PNG if present), menu: Paused ✓toggle / Settings… / Start with Windows ✓ / Quit. Tooltip "Say Something — hold Right Ctrl to dictate" (live hotkey name).
+`tray.js`: programmatic RGBA `nativeImage` (16/32px cyan-violet wisp dot; use `scripts/gen-icon.js` PNG if present), menu: Paused ✓toggle / Settings… / Start with Windows ✓ / Quit. Tooltip "Say Something. Hold Right Ctrl to talk." (live hotkey name).
 
 ## main.js + state.js (integrator)
 

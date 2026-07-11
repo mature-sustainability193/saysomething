@@ -33,7 +33,7 @@
     "prep": "node scripts/stage-bundle.js",
     "dist:dir": "npm run prep && electron-builder --dir",
     "dist": "npm run prep && electron-builder",
-    "test": "node test/formatter-test.js && node test/rewrite-test.js && node test/wav-test.js && node test/vad-test.js && node test/streaming-test.js"
+    "test": "node test/formatter-test.js && node test/rewrite-test.js && node test/wav-test.js && node test/vad-test.js && node test/streaming-test.js && node test/hotkey-match-test.js"
   },
   "build": {
     "appId": "app.saysomething.dictation",

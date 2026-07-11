@@ -36,10 +36,12 @@ const FILE = path.join(config.USER_DATA, 'settings.json');
 const TMP = FILE + '.tmp';
 
 const DEFAULTS = {
-  hotkey: { vk: 163, name: 'Right Ctrl' },
+  // `mods` (issue #1): generic modifier VKs that must be held with `vk` (Ctrl=17,
+  // Alt=18, Shift=16, Win=91). Empty => a bare key/modifier, the historical default.
+  hotkey: { vk: 163, name: 'Right Ctrl', mods: [] },
   // Drop pad hotkey (v0.4): hold this instead of the main hotkey → speak → a
   // draggable, auto-copied pad appears to place the text wherever you want.
-  padHotkey: { vk: 165, name: 'Right Alt' },
+  padHotkey: { vk: 165, name: 'Right Alt', mods: [] },
   pad: { enabled: true },
   mic: { deviceId: 'default', warm: true, preRollMs: 800 },
   model: 'small.en',
@@ -161,8 +163,31 @@ function fixup(s) {
   return s;
 }
 
+/**
+ * Coerce a hotkey `mods` array (issue #1): unique integer VKs in [0,255], max 4.
+ * `coerce` can't do this — its array branch is string-only (built for `dictionary`).
+ */
+function coerceMods(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  const seen = Object.create(null);
+  for (let i = 0; i < v.length && out.length < 4; i++) {
+    const n = Math.round(Number(v[i]));
+    if (!isFinite(n) || n < 0 || n > 255) continue;
+    if (seen[n]) continue;
+    seen[n] = true;
+    out.push(n);
+  }
+  return out;
+}
+
 function validated(raw) {
-  return fixup(coerce(DEFAULTS, raw));
+  const s = fixup(coerce(DEFAULTS, raw));
+  // `coerce` strips the numeric modifier arrays (it treats every array as the
+  // string-list `dictionary`), so re-derive them from the raw input here.
+  s.hotkey.mods = coerceMods(raw && raw.hotkey && raw.hotkey.mods);
+  s.padHotkey.mods = coerceMods(raw && raw.padHotkey && raw.padHotkey.mods);
+  return s;
 }
 
 function ensureDir() {

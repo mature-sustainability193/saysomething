@@ -34,6 +34,7 @@ const ipc = require('./ipc');
 const log = require('./log');
 const settingsStore = require('./stores/settings');
 const helper = require('./helper');
+const hotkeyMatch = require('./hotkey-match');
 const audioSession = require('./audio-session');
 const client = require('./whisper/client');
 const streaming = require('./whisper/streaming');
@@ -54,9 +55,12 @@ const ERROR_MS = 2500;
 // --- machine state ---------------------------------------------------------
 let started = false;
 let hotkeyVk = 163;          // main (inject-at-caret) hotkey — kept in sync w/ settings
+let hotkeyMods = [];         // modifier VKs that must be held with hotkeyVk (issue #1)
 let padHotkeyVk = 165;       // drop-pad hotkey (Right Alt by default)
+let padHotkeyMods = [];      // modifier VKs that must be held with padHotkeyVk
 let padEnabled = true;       // whether the pad hotkey is watched/active
-let heldVk = 0;              // which gesture key is physically down; 0 = none
+let heldVk = 0;              // which gesture (trigger) key is physically down; 0 = none
+let heldKeys = Object.create(null); // all physically-held watched VKs, for combo matching
 let recording = null;        // the session currently RECORDING, or null (max one)
 let sessionSeq = 0;          // monotonic session id source
 let padText = null;          // text currently held by the open drop pad, or null
@@ -232,10 +236,25 @@ function overlayError(session, message) {
 // watch set (hotkey always; Esc only while recording)
 // ---------------------------------------------------------------------------
 
+function sameVks(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
 function updateWatch(isRecording) {
-  const vks = [hotkeyVk];
-  if (padEnabled && padHotkeyVk && padHotkeyVk !== hotkeyVk) vks.push(padHotkeyVk);
-  if (isRecording && vks.indexOf(ESC_VK) === -1) vks.push(ESC_VK);
+  const set = Object.create(null);
+  function add(vk) { set[vk] = true; }
+  // A combo binding watches its trigger AND every physical variant of each
+  // modifier, so their up/down events populate heldKeys for matching (issue #1).
+  const mainKeys = hotkeyMatch.watchKeysFor(hotkeyVk, hotkeyMods);
+  for (let i = 0; i < mainKeys.length; i++) add(mainKeys[i]);
+  if (padEnabled && padHotkeyVk && padHotkeyVk !== hotkeyVk) {
+    const padKeys = hotkeyMatch.watchKeysFor(padHotkeyVk, padHotkeyMods);
+    for (let i = 0; i < padKeys.length; i++) add(padKeys[i]);
+  }
+  if (isRecording) add(ESC_VK);
+  const vks = Object.keys(set).map(Number);
   try { helper.watch(vks); } catch (e) { log.error('state: watch failed', e); }
 }
 
@@ -552,12 +571,26 @@ function onGestureUp(vk) {
 
 function onKey(info) {
   if (!info || typeof info.vk !== 'number') return;
-  if (info.vk === hotkeyVk || (padEnabled && info.vk === padHotkeyVk)) {
-    if (info.down) onGestureDown(info.vk); else onGestureUp(info.vk);
+  const vk = info.vk;
+  // Track every watched key's physical state so combo modifiers can be matched.
+  if (info.down) heldKeys[vk] = true; else delete heldKeys[vk];
+
+  if (vk === ESC_VK) {
+    if (info.down && recording) cancel(recording);
     return;
   }
-  if (info.vk === ESC_VK && info.down) {
-    if (recording) cancel(recording);
+
+  const isMain = (vk === hotkeyVk);
+  const isPad = (padEnabled && vk === padHotkeyVk && padHotkeyVk !== hotkeyVk);
+  if (!isMain && !isPad) return; // a watched modifier — tracked only, never a gesture
+
+  if (info.down) {
+    // Start only when this trigger's required modifiers are all currently held.
+    const mods = isMain ? hotkeyMods : padHotkeyMods;
+    if (!hotkeyMatch.modsSatisfied(mods, heldKeys)) return;
+    onGestureDown(vk);
+  } else {
+    onGestureUp(vk);
   }
 }
 
@@ -611,7 +644,9 @@ function init() {
   try {
     const s0 = settingsStore.get();
     hotkeyVk = s0.hotkey.vk;
+    hotkeyMods = Array.isArray(s0.hotkey.mods) ? s0.hotkey.mods.slice() : [];
     if (s0.padHotkey && typeof s0.padHotkey.vk === 'number') padHotkeyVk = s0.padHotkey.vk;
+    padHotkeyMods = (s0.padHotkey && Array.isArray(s0.padHotkey.mods)) ? s0.padHotkey.mods.slice() : [];
     padEnabled = !!(s0.pad && s0.pad.enabled);
   } catch (e) { /* defaults */ }
   try { autoStopEnabled = autoStopCfg(settingsStore.get()).enabled; } catch (e) { /* default false */ }
@@ -628,25 +663,30 @@ function init() {
       try { cancel(recording); } catch (e) { log.error('state: crash cleanup failed', e); }
     }
     heldVk = 0;
+    heldKeys = Object.create(null);
     updateWatch(false); // re-assert the idle watch set once the helper is back
   });
 
   settingsStore.onChange(function (s) {
     try {
       const vk = s.hotkey.vk;
+      const mods = Array.isArray(s.hotkey.mods) ? s.hotkey.mods : [];
       const pvk = s.padHotkey && s.padHotkey.vk;
+      const pmods = (s.padHotkey && Array.isArray(s.padHotkey.mods)) ? s.padHotkey.mods : [];
       const pen = !!(s.pad && s.pad.enabled);
       let rewatch = false;
-      if (typeof vk === 'number' && vk !== hotkeyVk) {
-        hotkeyVk = vk; rewatch = true;
+      if (typeof vk === 'number' && (vk !== hotkeyVk || !sameVks(mods, hotkeyMods))) {
+        hotkeyVk = vk; hotkeyMods = mods.slice(); rewatch = true;
         log.info('state: hotkey re-bound to vk ' + vk + ' (' + s.hotkey.name + ')');
       }
-      if ((typeof pvk === 'number' && pvk !== padHotkeyVk) || pen !== padEnabled) {
-        if (typeof pvk === 'number') padHotkeyVk = pvk;
+      if ((typeof pvk === 'number' && (pvk !== padHotkeyVk || !sameVks(pmods, padHotkeyMods))) || pen !== padEnabled) {
+        if (typeof pvk === 'number') { padHotkeyVk = pvk; padHotkeyMods = pmods.slice(); }
         padEnabled = pen; rewatch = true;
         log.info('state: pad hotkey ' + (pen ? 'vk ' + padHotkeyVk : 'disabled'));
       }
-      if (rewatch) updateWatch(!!recording); // re-apply the watch set
+      // A rebind can change which physical keys populate heldKeys; drop stale
+      // state so a modifier held during the settings change can't linger.
+      if (rewatch) { heldKeys = Object.create(null); updateWatch(!!recording); }
       // Pausing must never leave an in-flight session to auto-finalize and inject
       // later — kill it now. Idempotent: no-op when nothing is recording.
       if (s.paused && recording) {

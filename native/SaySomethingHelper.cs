@@ -213,6 +213,9 @@ static class SaySomethingHelper
     // abandoned rebind can never later transmit an unrelated keystroke (privacy).
     const int CAPTURE_TIMEOUT_MS = 15000;
     static readonly object _captureLock = new object();
+    // Modifier VKs held during an armed chord-capture (issue #1). Guarded by
+    // _captureLock; resolving the chord (trigger key) clears this.
+    static readonly HashSet<int> _captureMods = new HashSet<int>();
     // Fully qualified: System.Windows.Forms is also imported and defines a Timer.
     static System.Threading.Timer _captureTimer;
 
@@ -344,6 +347,7 @@ static class SaySomethingHelper
             lock (_captureLock)
             {
                 _captureArmed = true;
+                _captureMods.Clear();
                 if (_captureTimer == null)
                 {
                     _captureTimer = new System.Threading.Timer(OnCaptureTimeout, null, CAPTURE_TIMEOUT_MS, System.Threading.Timeout.Infinite);
@@ -439,20 +443,75 @@ static class SaySomethingHelper
 
     static void DisarmCapture()
     {
+        lock (_captureLock) { DisarmCaptureLocked(); }
+    }
+
+    // Disarm capture and drop any accumulated modifiers. Caller MUST hold _captureLock.
+    static void DisarmCaptureLocked()
+    {
+        _captureArmed = false;
+        _captureMods.Clear();
+        if (_captureTimer != null)
+        {
+            _captureTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        }
+    }
+
+    // Snapshot the held modifiers as an array. Caller MUST hold _captureLock.
+    static int[] ModsSnapshot()
+    {
+        int[] a = new int[_captureMods.Count];
+        _captureMods.CopyTo(a);
+        return a;
+    }
+
+    static bool IsModifier(int vk)
+    {
+        return vk == 0x10 || vk == 0x11 || vk == 0x12   // generic Shift / Ctrl / Alt
+            || (vk >= 0xA0 && vk <= 0xA5)                // L/R Shift, Ctrl, Alt
+            || vk == 0x5B || vk == 0x5C;                 // L/R Win
+    }
+
+    // Accumulate a modifier chord during capture; resolve when a non-modifier key
+    // goes DOWN (mods + that key) or a lone modifier is RELEASED (issue #1). Runs
+    // on the hook thread; all shared state touched under _captureLock.
+    static void HandleCaptureKey(int vk, bool down)
+    {
+        int[] mods = null;
+        int emitVk = 0;
+        bool emit = false;
         lock (_captureLock)
         {
-            _captureArmed = false;
-            if (_captureTimer != null)
+            if (!_captureArmed) return; // raced with disarm / timeout
+            bool isMod = IsModifier(vk);
+            if (down)
             {
-                _captureTimer.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                if (isMod) { _captureMods.Add(vk); return; } // wait for the trigger
+                mods = ModsSnapshot();
+                emitVk = vk;
+                emit = true;
+                DisarmCaptureLocked();
+            }
+            else
+            {
+                if (!isMod) return;
+                if (!_captureMods.Contains(vk)) return;
+                // Modifier pressed + released with no trigger => bind the modifier
+                // itself (e.g. bare Right Ctrl); any still-held modifiers are its mods.
+                _captureMods.Remove(vk);
+                mods = ModsSnapshot();
+                emitVk = vk;
+                emit = true;
+                DisarmCaptureLocked();
             }
         }
+        if (emit) EmitCaptured(emitVk, mods);
     }
 
     // Fires only if an armed capture was never satisfied by a keypress.
     static void OnCaptureTimeout(object state)
     {
-        _captureArmed = false;
+        lock (_captureLock) { DisarmCaptureLocked(); }
     }
 
     static void DisarmPick()
@@ -562,12 +621,11 @@ static class SaySomethingHelper
                     bool up = (msg == WM_KEYUP || msg == WM_SYSKEYUP);
                     int vk = (int)k.vkCode;
 
-                    if (down && _captureArmed)
+                    if (_captureArmed && (down || up))
                     {
-                        // One-shot rebind capture: report ANY next keydown, then
-                        // revert to the normal watched-only behaviour.
-                        _captureArmed = false;
-                        EmitCaptured(vk);
+                        // Chord-capture: accumulate modifiers, resolve on the trigger
+                        // key (issue #1). Takes over all keys while armed.
+                        HandleCaptureKey(vk, down);
                     }
                     else if (down || up)
                     {
@@ -907,9 +965,24 @@ static class SaySomethingHelper
         Emit("{\"evt\":\"key\",\"vk\":" + vk + ",\"down\":" + (down ? "true" : "false") + "}");
     }
 
-    static void EmitCaptured(int vk)
+    static void EmitCaptured(int vk, int[] mods)
     {
-        Emit("{\"evt\":\"captured\",\"vk\":" + vk + ",\"name\":" + JStr(VkName(vk)) + "}");
+        StringBuilder sb = new StringBuilder();
+        sb.Append("{\"evt\":\"captured\",\"vk\":");
+        sb.Append(vk);
+        sb.Append(",\"name\":");
+        sb.Append(JStr(VkName(vk)));
+        sb.Append(",\"mods\":[");
+        if (mods != null)
+        {
+            for (int i = 0; i < mods.Length; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(mods[i]);
+            }
+        }
+        sb.Append("]}");
+        Emit(sb.ToString());
     }
 
     static void EmitPicked(int x, int y)

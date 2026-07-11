@@ -645,7 +645,11 @@ function wireIpc() {
         if (settled) return;
         settled = true;
         clearTimeout(to);
-        resolve({ vk: info.vk, name: info.name || ('VK ' + info.vk) });
+        resolve({
+          vk: info.vk,
+          name: info.name || ('VK ' + info.vk),
+          mods: Array.isArray(info.mods) ? info.mods : [],
+        });
       }
       helper.once('captured', onCap);
       try {

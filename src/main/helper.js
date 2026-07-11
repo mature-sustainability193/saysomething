@@ -11,7 +11,7 @@
  * Events:
  *   'ready'       — helper installed its hook and is accepting commands
  *   'key'         {vk, down}      — a watched VK went down/up (never injected)
- *   'captured'    {vk, name}      — one-shot rebind capture result
+ *   'captured'    {vk, name, mods} — rebind capture result (mods: held modifier VKs)
  *   'foreground'  {exe, title}    — mirror of a foreground() reply
  *   'log'         msg             — helper-internal warning (never keystrokes)
  *   'crash'       {code, signal}  — helper process exited unexpectedly
@@ -262,9 +262,21 @@ class Helper extends EventEmitter {
       case 'key':
         this.emit('key', { vk: obj.vk | 0, down: !!obj.down });
         break;
-      case 'captured':
-        this.emit('captured', { vk: obj.vk | 0, name: (typeof obj.name === 'string' ? obj.name : '') });
+      case 'captured': {
+        const mods = [];
+        if (Array.isArray(obj.mods)) {
+          for (let mi = 0; mi < obj.mods.length; mi++) {
+            const mv = obj.mods[mi] | 0;
+            if (mv > 0 && mods.indexOf(mv) === -1) mods.push(mv);
+          }
+        }
+        this.emit('captured', {
+          vk: obj.vk | 0,
+          name: (typeof obj.name === 'string' ? obj.name : ''),
+          mods: mods,
+        });
         break;
+      }
       case 'picked':
         this.emit('picked', { x: obj.x | 0, y: obj.y | 0 });
         break;
