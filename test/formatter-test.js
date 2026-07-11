@@ -60,6 +60,23 @@ eq(format('new line'), '', 'voice: a lone "new line" -> empty (nothing intelligi
 eq(format('a new line b', { voiceCommands: false, trailingSpace: false }),
    'A new line b', 'voice: toggle off leaves the words');
 
+// ---- whisper segment newlines (issue #3) ------------------------------------
+eq(format('I am just holding\nright control and talking', { trailingSpace: false }),
+   'I am just holding right control and talking',
+   'newlines: whisper segment break flattened to a space');
+eq(format('line one\n\n\nline two', { trailingSpace: false }),
+   'Line one line two',
+   'newlines: a run of source newlines becomes a single space');
+eq(format('one two\r\nthree', { trailingSpace: false }),
+   'One two three',
+   'newlines: CRLF flattened too');
+eq(format('part one\ntwo new paragraph part\nthree', { trailingSpace: false }),
+   'Part one two\n\npart three',
+   'newlines: source breaks flattened but a spoken "new paragraph" still breaks');
+eq(format('a b\nc', { voiceCommands: false, trailingSpace: false }),
+   'A b c',
+   'newlines: flattened even with voice commands OFF');
+
 // ---- capitalization ----------------------------------------------------------
 eq(format('hello'), 'Hello ', 'cap: first letter uppercased');
 eq(format('- hello', { trailingSpace: false }), '- Hello',

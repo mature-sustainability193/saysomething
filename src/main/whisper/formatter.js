@@ -10,13 +10,14 @@
  * Pipeline order (docs/SPEC.md):
  *   1. strip whisper artifacts  (format.artifactStrip)
  *   2. trim                     (always)
- *   3. voice commands           (format.voiceCommands)   "new line"/"new paragraph"
- *   4. filler removal           (format.fillerRemoval)   um / uh / erm / uhm / ahem
- *   5. collapse whitespace      (always)
- *   6. LLM-rewrite extension    (optional hook, no-op by default)
- *   7. empty check              -> '' if nothing left
- *   8. auto-capitalize          (format.autoCapitalize)  first alphabetical char
- *   9. trailing space           (format.trailingSpace)   append ' ' unless it ends in whitespace
+ *   3. flatten source newlines  (always)   whisper segment breaks -> spaces
+ *   4. voice commands           (format.voiceCommands)   "new line"/"new paragraph"
+ *   5. filler removal           (format.fillerRemoval)   um / uh / erm / uhm / ahem
+ *   6. collapse whitespace      (always)
+ *   7. LLM-rewrite extension    (optional hook, no-op by default)
+ *   8. empty check              -> '' if nothing left
+ *   9. auto-capitalize          (format.autoCapitalize)  first alphabetical char
+ *  10. trailing space           (format.trailingSpace)   append ' ' unless it ends in whitespace
  *
  * The function is pure (no I/O, no globals) so it can be exercised directly by
  * test/formatter-test.js.
@@ -128,6 +129,11 @@ function format(text, formatSettings, rewrite) {
 
   if (opt.artifactStrip) s = stripArtifacts(s);
   s = s.trim();
+  // whisper segments long dictation across multiple lines; those raw newlines
+  // are transcription structure, not user intent. Flatten them to spaces BEFORE
+  // voice commands, which are the ONLY sanctioned source of line breaks. Without
+  // this, whisper's per-segment newlines survive into the injected text (issue #3).
+  s = s.replace(/[\r\n]+/g, ' ');
   if (opt.voiceCommands) s = applyVoiceCommands(s);
   if (opt.fillerRemoval) s = removeFillers(s);
   s = collapseWhitespace(s);
