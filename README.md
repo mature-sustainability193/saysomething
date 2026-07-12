@@ -18,7 +18,7 @@
 
 <img src="assets/demo.gif" alt="Say Something: talk, catch your words in the floating drop pad, and drag them into any text box" width="720" />
 
-<em>Catch your words in the floating pad, then drag it onto any field and let go. No other dictation tool lets you aim.</em>
+<em>Catch your words in the floating pad, then drag it onto any field and let go. I haven't found another dictation tool that lets you aim.</em>
 
 <br /><br />
 
