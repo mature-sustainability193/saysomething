@@ -4,7 +4,7 @@
 
 *You're sitting there quiet all day. Say Something.*
 
-### Free, local transcription. Speak anywhere, drop anywhere.
+### Free, local transcription. Talk anywhere, drop anywhere.
 
 **Say Something** lets you talk instead of type. Hold **Right Ctrl** (Windows) or **Right Cmd** (Mac) in any app, say your thing, let go, and the cleaned-up text drops in at your cursor about a second later. It runs 100% on your machine. Free, open-source, no account, no cloud, no subscription, no telemetry. None of that.
 
