@@ -16,6 +16,12 @@
 
 <br />
 
+<img src="assets/demo.gif" alt="Say Something: talk, catch your words in the floating drop pad, and drag them into any text box" width="720" />
+
+<em>Talk anywhere, catch your words in the pad, then drag them exactly where you want. No other dictation tool lets you aim.</em>
+
+<br /><br />
+
 <img src="assets/screenshots/overlay-listening.png" alt="Say Something overlay pill, listening, with a live aurora waveform" width="620" />
 
 <em>The little pill while it's listening. Live waveform and a timer, so you know it's actually on.</em>
