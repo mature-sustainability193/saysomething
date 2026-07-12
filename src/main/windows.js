@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Window factory (agent E).
+ * Window factory.
  *
  * Owns the two BrowserWindows:
  *  - overlay: frameless, transparent, click-through, non-focusable, always-on-top

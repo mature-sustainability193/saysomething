@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SaySomethingHelper supervisor (agent A).
+ * SaySomethingHelper supervisor.
  *
  * Compiles the native helper when the binary is missing (native/build.cmd via
  * cmd.exe on Windows, native/build-mac.sh via /bin/bash on darwin), spawns it,

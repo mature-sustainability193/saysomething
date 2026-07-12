@@ -1,6 +1,6 @@
 # Say Something — product & technical spec
 
-**Say Something** is a local-first voice dictation app for Windows: hold a key anywhere, speak, release — your words appear in whatever app has focus. A free, private remake of Wispr Flow. Everything runs on-device; no accounts, no API keys, no cloud, no telemetry. Ever.
+**Say Something** is a local-first voice dictation app for Windows and macOS: hold a key anywhere, speak, release — your words appear in whatever app has focus. A free, private remake of Wispr Flow. Everything runs on-device; no accounts, no API keys, no cloud, no telemetry. Ever.
 
 ## Product experience
 
@@ -17,7 +17,7 @@
 
 ## Visual identity — "aurora wisp"
 
-Dark, ethereal, premium. **Absolutely no orange, no Anthropic-terracotta.** Ink backgrounds (#0B0E14, panels #10141D, borders #1E2430), soft light text (#E6EAF2, muted #8B93A7), and an aurora accent spectrum: cyan **#67E8F9** → teal **#5EEAD4** → violet **#A78BFA**. Accent gradients, soft outer glows, rounded (12–16px) surfaces, smooth 150–250 ms ease-out transitions. The logo/motif is an aurora voice waveform — five rounded gradient bars, an abstract sound mark (deliberately NOT a letterform: the name abbreviates to "SS", so any monogram/initials treatment is off-limits). Typeface: system stack (`Segoe UI Variable`, `Segoe UI`, sans-serif). The overlay pill glows faintly cyan while listening; the waveform bars use the aurora gradient. Design tokens live in `src/renderer/shared/theme.css` and both renderers must consume them.
+Dark, ethereal, premium. **Absolutely no orange, no terracotta.** Ink backgrounds (#0B0E14, panels #10141D, borders #1E2430), soft light text (#E6EAF2, muted #8B93A7), and an aurora accent spectrum: cyan **#67E8F9** → teal **#5EEAD4** → violet **#A78BFA**. Accent gradients, soft outer glows, rounded (12–16px) surfaces, smooth 150–250 ms ease-out transitions. The logo/motif is an aurora voice waveform — five rounded gradient bars, an abstract sound mark (deliberately NOT a letterform: the name abbreviates to "SS", so any monogram/initials treatment is off-limits). Typeface: system stack (`Segoe UI Variable`, `Segoe UI`, sans-serif). The overlay pill glows faintly cyan while listening; the waveform bars use the aurora gradient. Design tokens live in `src/renderer/shared/theme.css` and both renderers must consume them.
 
 ## Architecture
 
@@ -76,6 +76,6 @@ Helper or whisper-server crash → auto-restart with exponential backoff (max 3 
 
 ### Non-goals for v1
 
-No true server-side streaming endpoint (v0.3 ships display-only windowed live partials instead — see "Live preview" above; a real streaming decode remains out of scope), no per-app profiles, no auto-updates, no installer/code-signing (shortcut script instead), no macOS/Linux.
+No true server-side streaming endpoint (v0.3 ships display-only windowed live partials instead — see "Live preview" above; a real streaming decode remains out of scope), no per-app profiles, no auto-updates, no installer/code-signing (shortcut script instead), no Linux.
 
 **Update (v0.2): local LLM rewriting is now a shipped feature** — an optional pipeline stage after the formatter that rewrites the transcript via a **local model server** (Ollama by default at `http://127.0.0.1:11434`, or any OpenAI-compatible server like LM Studio/vLLM; issue #2), always loopback-only so a transcript never leaves the machine, off by default, and always falls back to the un-rewritten text so a dictation is never lost. See the runtime-network exception in the privacy rules.

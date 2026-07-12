@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Settings store (agent E).
+ * Settings store.
  *
  * Persists to <USER_DATA>/settings.json. Loads by deep-merging saved JSON over
  * the schema DEFAULTS with type coercion, so partial / stale / hand-edited files
@@ -351,7 +351,7 @@ module.exports = {
     };
   },
 
-  /** Exposed for tests / integrator introspection. */
+  /** Exposed for tests / introspection. */
   DEFAULTS: DEFAULTS,
   path: FILE,
 };

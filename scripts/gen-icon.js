@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * gen-icon.js (agent E) — rasterize the aurora wisp mark to a 256px PNG and
+ * gen-icon.js — rasterize the aurora wisp mark to a 256px PNG and
  * write a valid single-image ICO for the app/shortcut icon.
  *
  * Runs under Electron (it needs a BrowserWindow to rasterize the SVG). If invoked

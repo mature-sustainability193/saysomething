@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Central paths & constants. Everyone imports this module.
+ * Central paths & constants. Shared by every module.
  *
  * Works both inside the Electron main process and in plain-node contexts such as
  * scripts/setup.js and the test scripts, always resolving to the per-user data dir

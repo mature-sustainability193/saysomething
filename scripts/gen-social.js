@@ -67,7 +67,7 @@ function runUnderElectron(el) {
     wave +
     '<p class="kicker">You’re sitting there quiet all day.</p>' +
     '<h1>Say Something</h1>' +
-    '<p class="desc"><span class="free">Free, local</span> voice dictation for Windows. No cloud, no account.</p>' +
+    '<p class="desc"><span class="free">Free, local</span> voice dictation for Windows and Mac. No cloud, no account.</p>' +
     '</div></body></html>';
 
   app.whenReady().then(function () {

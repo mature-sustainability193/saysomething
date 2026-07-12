@@ -17,7 +17,7 @@ logs
 dist/
 build-resources/
 
-# Dev tooling (Claude Code local config — must not ship in the public repo)
+# Local dev tooling config (must not ship in the public repo)
 .claude/
 
 # OS / editor junk

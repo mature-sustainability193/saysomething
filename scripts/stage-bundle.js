@@ -44,8 +44,8 @@ async function main() {
   //    release zip (downloading it first if needed). Mac: no official release to
   //    download — binaries.ensure() just verifies the locally-built whisper-server
   //    (from scripts/build-whisper-mac.sh) exists and is executable, and throws a
-  //    clear "build it with <path>" error otherwise. Either way, other agents may
-  //    not have staged it yet on this machine — that's expected, not a bug here.
+  //    clear "build it with <path>" error otherwise. Either way, it may
+  //    not be staged yet on this machine — that's expected, not a bug here.
   process.stdout.write('stage-bundle: ensuring whisper binaries…\n');
   await binaries.ensure();
 

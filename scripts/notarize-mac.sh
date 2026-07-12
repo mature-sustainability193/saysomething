@@ -15,12 +15,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-# Node: use whatever's in PATH, else the known local toolchain drop.
-if ! command -v npm >/dev/null 2>&1; then
-  for cand in /private/tmp/claude-501/*/*/scratchpad/tools/node/bin; do
-    [ -x "$cand/npm" ] && export PATH="$cand:$PATH" && break
-  done
-fi
+# Node: must be available on PATH.
 command -v npm >/dev/null 2>&1 || { echo "ERROR: node/npm not found in PATH." >&2; exit 1; }
 [ -d node_modules ] || { echo "ERROR: run 'npm install' in $REPO first." >&2; exit 1; }
 

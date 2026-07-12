@@ -1,4 +1,4 @@
-# make-shortcut.ps1 (agent E)
+# make-shortcut.ps1
 #
 # Creates Desktop + Start Menu shortcuts that launch SaySomething via the local Electron
 # binary with the repo path as its argument, using assets/SaySomething.ico as the icon.

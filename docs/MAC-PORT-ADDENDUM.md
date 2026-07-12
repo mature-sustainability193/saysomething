@@ -1,20 +1,20 @@
-# macOS port — coordination addendum (binding contracts for this port)
+# macOS port — pinned technical decisions
 
-This file pins decisions that cross module boundaries so parallel work stays coherent.
+This file pins decisions that cross module boundaries.
 It supplements `docs/MAC-PORT.md` and `docs/CONTRACTS.md`. Where they conflict, THIS file wins.
 
-## File ownership for the port (do not edit outside your lane)
+## Port module map
 
-| Lane | Files |
+| Area | Files |
 |---|---|
 | **helper** | `native/SaySomethingHelper.swift` (new), `native/build-mac.sh` (new), `test/helper-selftest.js` (mac-compat edits) |
 | **whisper-build** | `scripts/build-whisper-mac.sh` (new), stages `bin/whisper/whisper-server` (gitignored) |
 | **js-platform** | `src/main/config.js`, `src/main/helper.js`, `src/main/whisper/binaries.js`, `src/main/whisper/server.js`, `src/main/tray.js`, `src/main/windows.js`, `src/main/stores/settings.js`, `scripts/setup.js`, `src/renderer/settings/settings.js` (only if VK/mod display needs platform names) |
 | **permissions** | `src/main/permissions.js` (new), `src/main/main.js`, `src/main/ipc.js`, `src/preload/welcome.js` (new or edit), `src/renderer/welcome/*` |
 | **packaging** | `package.json`, `build-resources/entitlements.mac.plist` (new), `build-resources/entitlements.mac.inherit.plist` (new), `scripts/stage-bundle.js`, `scripts/gen-icns.js` (new), `assets/SaySomething.icns` (generated) |
-| **tests-scripts** | `test/e2e-transcribe.sh` (new), `test/partial-transcribe.sh` (new), other `test/*.js` mac-compat, but NOT `package.json` and NOT `test/helper-selftest.js` |
+| **tests-scripts** | `test/e2e-transcribe.sh` (new), `test/partial-transcribe.sh` (new), other `test/*.js` mac-compat |
 
-Nobody runs `git commit`. Nobody touches the USB original under `/Volumes/NO NAME`.
+
 
 ## Added helper stdio protocol (mac only, additive — Windows helper unchanged)
 
@@ -87,10 +87,10 @@ Windows defaults unchanged. Saved settings still deep-merge over these.
 - Self-injected events are tagged via `eventSourceUserData` (magic value) and ignored by the taps.
 - `foreground` replies `{"evt":"foreground","exe":"<localizedName or bundle id>","title":""}` (no TCC needed).
 
-## Dev-mode TCC caveat (affects everyone's testing)
+## Dev-mode TCC caveat
 
-In this headless session no TCC grants exist: event taps can't be created and
+Without TCC grants, event taps can't be created and
 CGEvent.post won't deliver. Everything must degrade gracefully and be verifiable at
 the protocol level (ping/pong, clipboard, foreground, perms reporting). Interactive
-hotkey/paste testing happens later, by a human, after granting Input Monitoring +
+hotkey/paste testing requires granting Input Monitoring +
 Accessibility + Microphone.

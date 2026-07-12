@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Dictation state machine (agent I — integrator).
+ * Dictation state machine.
  *
  * Implements the SPEC machine: idle -> recording -> transcribing -> injecting ->
  * idle, with tap-to-latch, hold-to-dictate, Esc-to-cancel, overlapping sessions,

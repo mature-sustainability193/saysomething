@@ -1,10 +1,10 @@
 # Contributing to SaySomething
 
-Thanks for your interest in SaySomething — a local-first, on-device voice dictation app for Windows. Contributions are welcome. Please read the hard constraints below before you start; they are not stylistic preferences, they are load-bearing to the project's design and privacy promises.
+Thanks for your interest in SaySomething — a local-first, on-device voice dictation app for Windows and macOS. Contributions are welcome. Please read the hard constraints below before you start; they are not stylistic preferences, they are load-bearing to the project's design and privacy promises.
 
 ## Dev setup
 
-SaySomething targets **Windows** and **Node.js >= 24**.
+SaySomething targets **Windows** and **macOS**, on **Node.js >= 24**.
 
 ```sh
 npm install          # installs electron (the only devDependency)
@@ -37,6 +37,6 @@ These are enforced by the spec (`docs/SPEC.md`). PRs that violate them will not 
   - **Audio never touches disk.** The pre-roll ring buffer lives in renderer memory and is discarded unless a session starts; WAV exists only as an in-memory buffer for the POST.
   - **localhost only.** whisper-server binds `127.0.0.1`. No runtime network calls except that localhost server. The only internet access is `scripts/setup.js` / model downloads, and it must say so on the console.
 
-## Module ownership
+## Module layout
 
-See **`docs/CONTRACTS.md`** for module boundaries and ownership before changing cross-cutting behavior.
+See **`docs/CONTRACTS.md`** for module boundaries before changing cross-cutting behavior.

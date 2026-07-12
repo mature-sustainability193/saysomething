@@ -1,6 +1,6 @@
-# Say Something, project handoff
+# Say Something, project overview
 
-Free, local voice dictation for Windows. Hold a key, talk, and your words show up at your cursor. Runs 100% on-device (whisper.cpp), no account, no cloud, no telemetry. The differentiator is the **drop pad**: catch your words in a floating puck and drag it onto any text box to drop them exactly where you want.
+Free, local voice dictation for Windows and macOS. Hold a key, talk, and your words show up at your cursor. Runs 100% on-device (whisper.cpp), no account, no cloud, no telemetry. The differentiator is the **drop pad**: catch your words in a floating puck and drag it onto any text box to drop them exactly where you want.
 
 - **Repo:** https://github.com/bluejacketblackhawk/saysomething
 - **Current release:** v0.2.0 (installer + portable). v0.1.0 was the first public launch.
@@ -78,11 +78,11 @@ Both artifacts are **unsigned**, so Windows SmartScreen says "unknown publisher"
 - **Configurable local rewrite endpoint** (issue #2): Ollama or any OpenAI-compatible local server, loopback-only.
 - **Newline fix** (issue #3): whisper segment breaks are flattened before formatting.
 - **Drop pad**: drag-to-drop (was click-to-place).
-- Adversarial review after each feature; the review-found bugs (hotkey mis-route, stale-modifier misfire, loopback redirect bypass) are fixed.
+- Reviewed after each feature; the review-found bugs (hotkey mis-route, stale-modifier misfire, loopback redirect bypass) are fixed.
 
 ## Roadmap / open items
 
-- **macOS port** — DONE (Apple Silicon + Intel). The Swift helper (`native/SaySomethingHelper.swift`) speaks the same stdio protocol as the C# one (Windows-VK translation at the boundary, so settings stay portable), whisper.cpp builds locally with Metal (`scripts/build-whisper-mac.sh`), first-run TCC onboarding lives in the welcome window, and electron-builder makes a dmg+zip per arch. The two native binaries (the Swift helper and whisper-server) are universal (arm64 + x86_64 via lipo), so the one bundled `bin/` tree runs on both; the Intel whisper slice is CPU/Accelerate (no Metal). Guide: `docs/MAC-PORT.md`, pinned decisions: `docs/MAC-PORT-ADDENDUM.md`. Left for a human: a live hands-on dictation pass after granting TCC, and Developer ID signing/notarization (steps in MAC-PORT.md §8).
+- **macOS port** — DONE (Apple Silicon + Intel). The Swift helper (`native/SaySomethingHelper.swift`) speaks the same stdio protocol as the C# one (Windows-VK translation at the boundary, so settings stay portable), whisper.cpp builds locally with Metal (`scripts/build-whisper-mac.sh`), first-run TCC onboarding lives in the welcome window, and electron-builder makes a dmg+zip per arch. The two native binaries (the Swift helper and whisper-server) are universal (arm64 + x86_64 via lipo), so the one bundled `bin/` tree runs on both; the Intel whisper slice is CPU/Accelerate (no Metal). Guide: `docs/MAC-PORT.md`, pinned decisions: `docs/MAC-PORT-ADDENDUM.md`. Remaining: a live hands-on dictation pass after granting TCC, and Developer ID signing/notarization (steps in MAC-PORT.md §8).
 - **Code signing** — Windows (SmartScreen) and macOS (Gatekeeper/notarization) both show "unknown/unidentified developer" while unsigned. Buying certs removes the scare screens.
 - **Social preview / launch** — social banner is set; Ko-fi tip link is in the README.
 

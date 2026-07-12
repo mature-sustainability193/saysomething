@@ -4,7 +4,7 @@
 # the resulting binary at bin/whisper/whisper-server for the "Say Something" port.
 #
 # This is the ONLY producer of bin/whisper/whisper-server on macOS (see
-# docs/MAC-PORT-ADDENDUM.md — "whisper-build" lane). binaries.js on darwin does
+# docs/MAC-PORT-ADDENDUM.md). binaries.js on darwin does
 # NOT download a prebuilt server; it just checks this file exists.
 #
 # Arch policy (--arch flag; default = universal on arm64 hosts, host arch else):

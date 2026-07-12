@@ -2,7 +2,7 @@
 
 /*
  * SaySomething VAD — energy-based voice-activity detector for latched auto-stop.
- * Owned by agent B (audio); consumed by audio.js in the overlay renderer, and
+ * Consumed by audio.js in the overlay renderer, and
  * unit-tested in plain node (test/vad-test.js) — hence the dual UMD-lite export.
  *
  * This is a PURE state machine: it takes a stream of RMS levels (the same levels

@@ -1,22 +1,22 @@
-# Say Something — module contracts & file ownership
+# Say Something — module contracts & file map
 
-Read `docs/SPEC.md` first. This file is the integration authority: exact file map, module interfaces, IPC channels, helper protocol, settings schema. If you must deviate, note it in your report; do not silently change a contract.
+Read `docs/SPEC.md` first. This file is the integration authority: exact file map, module interfaces, IPC channels, helper protocol, settings schema. Keep implementations in sync with these contracts.
 
-## File ownership map
+## File map
 
-| Owner | Files |
+| Module | Files |
 |---|---|
-| **S** scaffold | `package.json`, `.gitignore`, `README.md`, `assets/wisp.svg`, `src/main/main.js` (boot skeleton), `src/main/config.js`, `src/main/log.js`, `src/main/ipc.js`, `src/preload/overlay.js`, `src/preload/settings.js`, stubs for all module files below |
-| **A** native helper | `native/SaySomethingHelper.cs`, `native/build.cmd`, `src/main/helper.js`, `test/helper-selftest.js` |
-| **B** audio | `src/renderer/overlay/audio.js`, `src/renderer/overlay/worklet.js`, `src/main/audio-session.js`, `test/wav-test.js` |
-| **C** whisper engine | `src/main/whisper/models.js`, `src/main/whisper/binaries.js`, `src/main/whisper/server.js`, `src/main/whisper/client.js`, `src/main/whisper/formatter.js`, `scripts/setup.js`, `test/formatter-test.js`, `test/e2e-transcribe.ps1` |
-| **D** overlay UI | `src/renderer/overlay/index.html`, `src/renderer/overlay/overlay.css`, `src/renderer/overlay/overlay.js`, `src/renderer/shared/theme.css` |
-| **E** settings/tray/stores | `src/main/stores/settings.js`, `src/main/stores/history.js`, `src/main/tray.js`, `src/main/windows.js`, `src/renderer/settings/index.html`, `src/renderer/settings/settings.css`, `src/renderer/settings/settings.js`, `scripts/gen-icon.js`, `scripts/make-shortcut.ps1` |
-| **I** integrator | `src/main/state.js`, final `src/main/main.js` (incl. `--smoke`), fixes anywhere |
+| Core / boot | `package.json`, `.gitignore`, `README.md`, `assets/wisp.svg`, `src/main/main.js` (boot skeleton), `src/main/config.js`, `src/main/log.js`, `src/main/ipc.js`, `src/preload/overlay.js`, `src/preload/settings.js` |
+| Native helper | `native/SaySomethingHelper.cs`, `native/build.cmd`, `src/main/helper.js`, `test/helper-selftest.js` |
+| Audio | `src/renderer/overlay/audio.js`, `src/renderer/overlay/worklet.js`, `src/main/audio-session.js`, `test/wav-test.js` |
+| Whisper engine | `src/main/whisper/models.js`, `src/main/whisper/binaries.js`, `src/main/whisper/server.js`, `src/main/whisper/client.js`, `src/main/whisper/formatter.js`, `scripts/setup.js`, `test/formatter-test.js`, `test/e2e-transcribe.ps1` |
+| Overlay UI | `src/renderer/overlay/index.html`, `src/renderer/overlay/overlay.css`, `src/renderer/overlay/overlay.js`, `src/renderer/shared/theme.css` |
+| Settings / tray / stores | `src/main/stores/settings.js`, `src/main/stores/history.js`, `src/main/tray.js`, `src/main/windows.js`, `src/renderer/settings/index.html`, `src/renderer/settings/settings.css`, `src/renderer/settings/settings.js`, `scripts/gen-icon.js`, `scripts/make-shortcut.ps1` |
+| Integration | `src/main/state.js`, `src/main/main.js` (incl. `--smoke`) |
 
-Rules for module agents: write ONLY your files (replacing scaffold stubs is expected). Do not run `npm install`. Do not add dependencies — report needs instead. Windows paths via `path.join`; CommonJS (`require`) in main/preload; renderers are plain browser JS loaded via `<script>` tags (no modules needed; if used, `type="module"` with relative paths).
+Conventions: keep zero runtime dependencies; Windows paths via `path.join`; CommonJS (`require`) in main/preload; renderers are plain browser JS loaded via `<script>` tags (no modules needed; if used, `type="module"` with relative paths).
 
-## Paths & constants (src/main/config.js — scaffold provides, everyone imports)
+## Paths & constants (src/main/config.js)
 
 ```js
 module.exports = {
@@ -37,7 +37,7 @@ module.exports = {
 }
 ```
 
-`bin/`, `third_party/*.zip`, `node_modules/`, `%APPDATA%` are gitignored (scaffold: `.gitignore` = node_modules, bin, third_party/*.zip, logs, *.log).
+`bin/`, `third_party/*.zip`, `node_modules/`, `%APPDATA%` are gitignored (`.gitignore` = node_modules, bin, third_party/*.zip, logs, *.log).
 
 ## Settings schema (defaults — stores/settings.js validates & deep-merges saved JSON over these)
 
@@ -119,7 +119,7 @@ Preload bridge shape (both preloads): `window.saysomething = { send(ch,p), on(ch
 `windows.js`: `createOverlay()` — frameless, transparent, alwaysOnTop('screen-saver'), `focusable:false`, `skipTaskbar`, click-through (`setIgnoreMouseEvents(true)`), sized ~320×72, positioned bottom-center of primary display minus `overlay.offsetY`, hidden by `showInactive()`/`hide()` from state (`overlay:state` hidden ⇒ hide window; anything else ⇒ showInactive). The overlay window ALWAYS exists (hosts mic/worklet even when hidden — `show:false` at create). `createSettings()` — normal window 900×640, dark bg, opened from tray; single instance. `getOverlayWC()`/`getSettingsWC()` accessors.
 `tray.js`: programmatic RGBA `nativeImage` (16/32px cyan-violet wisp dot; use `scripts/gen-icon.js` PNG if present), menu: Paused ✓toggle / Settings… / Start with Windows ✓ / Quit. Tooltip "Say Something. Hold Right Ctrl to talk." (live hotkey name).
 
-## main.js + state.js (integrator)
+## main.js + state.js
 
 main.js: single-instance lock, `--smoke` branch before window creation, boot order: settings → log → helper.start() + binaries.ensure() + server.start() (parallel, tolerate whisper failure w/ status) → createOverlay → tray → watch(hotkey) → wire state machine. `app.setLoginItemSettings` sync with setting. state.js implements SPEC's machine; owns sessionId allocation; adds/removes Esc(27) from watch set on recording start/stop; ignores hotkey while `paused`; foreground() captured at finalize for history `app` field.
 

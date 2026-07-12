@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * History store (agent E).
+ * History store.
  *
  * Persists the last N transcriptions to <USER_DATA>/history.json as an array
  * ordered most-recent-first. `add` is a no-op when history is disabled in

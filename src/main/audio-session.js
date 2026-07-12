@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Audio session manager (main process) — owned by agent B (audio).
+ * Audio session manager (main process).
  *
  * Owns the main<->overlay audio IPC lifecycle and the assembly of buffered
  * PCM16 chunks into a complete 16 kHz / 16-bit / mono WAV (correct RIFF header).
@@ -12,7 +12,7 @@
  *   finish(sessionId): Promise<Buffer>                    -> sends `audio:stop`, resolves WAV
  *   abort(sessionId)                                      -> sends `audio:abort`, discards
  *
- * Wiring note for the integrator: this module owns the OUTGOING audio channels
+ * Wiring note: this module owns the OUTGOING audio channels
  * to the overlay (audio:start/stop/abort) — call begin/finish/abort and do NOT
  * send those channels yourself. The INCOMING renderer chunks (audio:chunk) must
  * be routed here via collect(sessionId, buf). It tolerates chunks that arrive

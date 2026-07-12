@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * SaySomething audio capture — owned by agent B (audio). Runs in the overlay renderer
+ * SaySomething audio capture. Runs in the overlay renderer
  * (a page script; window.saysomething is provided by src/preload/overlay.js).
  *
  * Responsibilities:
@@ -65,7 +65,7 @@
   function humanMicError(err) {
     var name = (err && err.name) ? err.name : '';
     if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
-      return 'Microphone access is blocked. Enable it in Windows Settings › Privacy › Microphone.';
+      return 'Microphone access is blocked. Enable it in your system privacy settings.';
     }
     if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
       return 'No microphone was found. Connect a mic and try again.';

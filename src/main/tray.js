@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * System tray (agent E).
+ * System tray.
  *
  * Shows the Say Something mark in the notification area (menu bar on macOS) with
  * a menu: Paused (checkbox) / Settings... / Start with Windows (checkbox) / Quit

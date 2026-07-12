@@ -181,7 +181,7 @@ Privacy here isn't a setting, it's how the thing is built.
 
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code's laid out, who owns what, and the C# / no-dependency rules to keep.
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code's laid out and the C# / no-dependency rules to keep.
 
 > Regenerating the screenshots: `npx electron scripts/capture-screens.js` renders the pill and both settings tabs to `assets/screenshots/`.
 

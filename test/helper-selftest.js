@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Helper self-test (agent A). Run manually:  node test/helper-selftest.js
+ * Helper self-test. Run manually:  node test/helper-selftest.js
  *
  * Exercises the real native helper end to end. Two platform paths:
  *

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * SaySomething main process entry (agent I — integrator).
+ * SaySomething main process entry.
  *
  * Responsibilities:
  *  - single-instance lock
@@ -388,9 +388,9 @@ function guideDownloadModel(haveOtherModel) {
 // On darwin the welcome window doubles as the TCC onboarding (three grants). It is
 // created HERE (not via windows.js) so it can carry the welcome preload that
 // bridges the perms:* channels — windows.showWelcome() ships no preload and is
-// owned by another lane. The renderer branches on the preload's platform flag, so
+// owned by windows.js. The renderer branches on the preload's platform flag, so
 // the same welcome/index.html serves both the Windows intro and the macOS
-// onboarding. See the report for the (optional) windows.js unification.
+// onboarding. windows.js owns the window lifecycle.
 
 let onboardingWin = null;
 

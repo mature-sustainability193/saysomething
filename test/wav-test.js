@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * WAV assembly test — owned by agent B (audio). Plain Node, no framework.
+ * WAV assembly test. Plain Node, no framework.
  *
  * Feeds synthetic sine-wave PCM16 chunks into src/main/audio-session.js via
  * collect()/finish() and asserts the resulting buffer is a valid 16 kHz / 16-bit

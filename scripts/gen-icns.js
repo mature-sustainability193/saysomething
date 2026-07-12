@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * gen-icns.js (packaging lane) — build assets/SaySomething.icns from
+ * gen-icns.js — build assets/SaySomething.icns from
  * assets/SaySomething.png using ONLY macOS built-in tools: `sips` (resize) and
  * `iconutil` (iconset -> icns). No npm deps, no network, no Electron relaunch
  * needed (unlike scripts/gen-icon.js, which needs a BrowserWindow to rasterize

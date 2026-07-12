@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * SaySomething settings renderer (agent E).
+ * SaySomething settings renderer.
  *
  * Plain browser JS (no modules/framework). Talks to main exclusively through the
  * preload bridge window.saysomething = { send, on, invoke } using the channels declared

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * macOS permissions (TCC) tracker for the dictation onboarding (agent: permissions).
+ * macOS permissions (TCC) tracker for the dictation onboarding.
  *
  * darwin ONLY behaviour. On win32 every getter reports "granted", every request is
  * a no-op, and allGranted() is always true, so the existing Windows flow is

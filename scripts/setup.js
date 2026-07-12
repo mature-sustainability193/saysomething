@@ -10,7 +10,7 @@
  *       bin/whisper/whisper-server and point at scripts/build-whisper-mac.sh if absent.
  *   [2] Compile the native helper (native/build.cmd via cmd.exe on Windows,
  *       native/build-mac.sh via /bin/bash on macOS) -> bin/helper. Skipped
- *       gracefully if the build script is not present yet (built in parallel).
+ *       gracefully if the build script is not present yet.
  *   [3] Download the default model (or --model <name>) into the user-data models
  *       dir with a console progress bar. Cross-platform (plain fetch). Skipped with --no-model.
  *   [4] Self-check: boot whisper-server with a local model (if any) and confirm
@@ -117,7 +117,7 @@ function step2Helper(status) {
     }
     if (!fs.existsSync(buildScript)) {
       status.helper = 'skip';
-      console.log('      ' + buildName + ' not present yet (helper is built in parallel) — skipping.');
+      console.log('      ' + buildName + ' not present yet — skipping.');
       return;
     }
     console.log('      compiling via ' + buildScript);

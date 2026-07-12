@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * SaySomething audio worklet — owned by agent B (audio).
+ * SaySomething audio worklet.
  *
  * Runs in the AudioWorkletGlobalScope (the audio rendering thread). It receives
  * the microphone signal at the hardware sample rate (the global `sampleRate`,
