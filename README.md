@@ -193,7 +193,7 @@ Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how the code's
 
 ## Support
 
-Say Something is free forever, but you can [buy me a coffee ☕](https://ko-fi.com/bluejacketblackhawk). It's not actually coffee. It's a secret second thing.
+Say Something is free forever, but you can [buy me a coffee ☕](https://ko-fi.com/bluejacketblackhawk). (It's not actually coffee. It's a secret second thing.)
 
 ## License
 
